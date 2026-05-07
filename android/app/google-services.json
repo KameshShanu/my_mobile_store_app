@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "745043765856",
+    "project_id": "my-awesome-mobile-app-674b0",
+    "storage_bucket": "my-awesome-mobile-app-674b0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:745043765856:android:d10414d19d06cb2f24f105",
+        "android_client_info": {
+          "package_name": "com.kamesh.my_mobile_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDCmIAFq8s-EZyKtEVE7XhE7wC_qP_LF4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
