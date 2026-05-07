@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
@@ -62,19 +63,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     elevation: 5,
                   ),
                   onPressed: () async {
-                    if (_isLogin) {
-                      // Logic for returning users
-                      await _auth.signIn(
-                        _emailController.text,
-                        _passwordController.text,
-                      );
-                    } else {
-                      // Logic for brand new users
-                      await _auth.signUp(
-                        // Make sure your auth_service has a signUp method!
-                        _emailController.text,
-                        _passwordController.text,
-                      );
+                    try {
+                      if (_isLogin) {
+                        // Logic for returning users
+                        await FirebaseAuth.instance.signInWithEmailAndPassword(
+                          email: _emailController.text.trim(),
+                          password: _passwordController.text.trim(),
+                        );
+                      } else {
+                        // Logic for brand new users
+                        await FirebaseAuth.instance
+                            .createUserWithEmailAndPassword(
+                              email: _emailController.text.trim(),
+                              password: _passwordController.text.trim(),
+                            );
+                      }
+                    } catch (e) {
+                      print("Error: $e");
+                      // This pops up a small message if login fails (e.g. wrong password)
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(e.toString())));
                     }
                   },
                   child: Text(

@@ -1,19 +1,17 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:my_mobile_app/screens/login_screen.dart'; 
+import 'package:my_mobile_app/screens/dashboard_screen.dart';
+import 'package:my_mobile_app/screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
   // Wrap the app in ProviderScope so Riverpod works everywhere
-  runApp(
-    const ProviderScope(
-      child: MySellableApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MySellableApp()));
 }
 
 class MySellableApp extends StatelessWidget {
@@ -29,7 +27,16 @@ class MySellableApp extends StatelessWidget {
         colorSchemeSeed: Colors.blue, // Change this to your brand color
         textTheme: GoogleFonts.poppinsTextTheme(), // Makes it look professional
       ),
-      home: const LoginScreen(),
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          // If the snapshot has user data, they are logged in!
+          if (snapshot.hasData) {
+            return const DashboardScreen(); // User is logged in, show dashboard
+          }
+          return const LoginScreen();
+        },
+      ),
     );
   }
 }
@@ -41,9 +48,7 @@ class MainEntryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(title: const Text("My Store")),
-      body: const Center(
-        child: Text("Welcome to your production-ready app!"),
-      ),
+      body: const Center(child: Text("Welcome to your production-ready app!")),
     );
   }
 }
