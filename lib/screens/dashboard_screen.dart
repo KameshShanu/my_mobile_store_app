@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_mobile_app/screens/equipment_scanner_screen.dart';
 import 'package:my_mobile_app/screens/profile_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -60,6 +61,23 @@ class DashboardScreen extends StatelessWidget {
                 ],
               ),
               child: const Text("Your Content Will Appear Here"),
+            ),
+            const SizedBox(height: 25), // Adds some space
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const EquipmentScannerScreen()),
+                );
+              },
+              icon: const Icon(Icons.camera_alt_outlined),
+              label: const Text("Scan Equipment", style: TextStyle(fontSize: 16)),
             ),
           ],
         ),
