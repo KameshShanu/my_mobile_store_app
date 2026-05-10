@@ -50,6 +50,21 @@ class _LoginScreenState extends State<LoginScreen> {
               _buildTextField("Password", _passwordController, true),
               const SizedBox(height: 40),
 
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => _showForgotPasswordDialog(context),
+                  child: Text(
+                    "Forgot Password?",
+                    style: GoogleFonts.poppins(
+                      color: Colors.black54,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+
               // Premium Login Button
               SizedBox(
                 width: double.infinity,
@@ -145,6 +160,38 @@ class _LoginScreenState extends State<LoginScreen> {
             vertical: 18,
           ),
         ),
+      ),
+    );
+  }
+
+  void _showForgotPasswordDialog(BuildContext context) {
+    final TextEditingController resetController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Reset Password", style: GoogleFonts.poppins()),
+        content: TextField(
+          controller: resetController,
+          decoration: const InputDecoration(hintText: "Enter your email"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await FirebaseAuth.instance.sendPasswordResetEmail(
+                email: resetController.text.trim(),
+              );
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Reset link sent to your email!")),
+              );
+            },
+            child: const Text("Send"),
+          ),
+        ],
       ),
     );
   }

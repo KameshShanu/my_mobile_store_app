@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_mobile_app/screens/profile_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -20,9 +21,12 @@ class DashboardScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
+            icon: const Icon(Icons.person_outline, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
             },
           ),
         ],
@@ -37,7 +41,10 @@ class DashboardScreen extends StatelessWidget {
             ),
             Text(
               user?.email ?? "User",
-              style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold),
+              style: GoogleFonts.poppins(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 30),
             Container(
@@ -49,7 +56,7 @@ class DashboardScreen extends StatelessWidget {
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
-                  )
+                  ),
                 ],
               ),
               child: const Text("Your Content Will Appear Here"),
