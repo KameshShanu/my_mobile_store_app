@@ -49,7 +49,7 @@ class _EquipmentScannerScreenState extends State<EquipmentScannerScreen> {
     try {
       final model = GenerativeModel(
         model: 'gemini-3.8-flash', // Updated to current supported model
-        apiKey: 'AQ.Ab8RN6JAIUKUtx4QgPApeI9nMS2IzZ_Mhb7-_isl71nXvvEWYA',
+        apiKey: const String.fromEnvironment('GEMINI_API_KEY'),
         requestOptions: const RequestOptions(apiVersion: 'v1'),
       );
 
