@@ -14,119 +14,197 @@ class _LoginScreenState extends State<LoginScreen> {
   final AuthService _auth = AuthService();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLogin = true; // This toggles between Login and Sign Up
+  bool _isLogin = true; // Toggles between Login and Sign Up
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  Future<void> _submitAuth() async {
+    setState(() => _isLoading = true);
+    try {
+      if (_isLogin) {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+      } else {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red.shade800,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // Soft professional grey
+      backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Welcome Back",
-                style: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1A1A1A),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Brand Shield Logo Badge
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.shield_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Sign in to continue to your store.",
-                style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 50),
+                const SizedBox(height: 24),
+                Text(
+                  _isLogin ? "Welcome Back" : "Create Account",
+                  style: GoogleFonts.poppins(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1A1A1A),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _isLogin
+                      ? "Sign in to access your inspection portal."
+                      : "Register to start logging inspections.",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 32),
 
-              // Email Field
-              _buildTextField("Email Address", _emailController, false),
-              const SizedBox(height: 20),
-
-              // Password Field
-              _buildTextField("Password", _passwordController, true),
-              const SizedBox(height: 40),
-
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => _showForgotPasswordDialog(context),
-                  child: Text(
-                    "Forgot Password?",
-                    style: GoogleFonts.poppins(
-                      color: Colors.black54,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                // Input Fields Card Container
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 15,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      _buildTextField(
+                        "Email Address",
+                        _emailController,
+                        false,
+                        Icons.email_outlined,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        "Password",
+                        _passwordController,
+                        true,
+                        Icons.lock_outline_rounded,
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => _showForgotPasswordDialog(context),
+                          child: Text(
+                            "Forgot Password?",
+                            style: GoogleFonts.poppins(
+                              color: Colors.blue.shade700,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Premium Action Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: _isLoading ? null : _submitAuth,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : Text(
+                                  _isLogin ? "Sign In" : "Create Account",
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isLogin = !_isLogin;
+                      });
+                    },
+                    child: Text(
+                      _isLogin
+                          ? "Don't have an account? Sign Up"
+                          : "Already have an account? Login",
+                      style: GoogleFonts.poppins(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
+                      ),
                     ),
                   ),
                 ),
-              ),
-
-              // Premium Login Button
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    elevation: 5,
-                  ),
-                  onPressed: () async {
-                    try {
-                      if (_isLogin) {
-                        // Logic for returning users
-                        await FirebaseAuth.instance.signInWithEmailAndPassword(
-                          email: _emailController.text.trim(),
-                          password: _passwordController.text.trim(),
-                        );
-                      } else {
-                        // Logic for brand new users
-                        await FirebaseAuth.instance
-                            .createUserWithEmailAndPassword(
-                              email: _emailController.text.trim(),
-                              password: _passwordController.text.trim(),
-                            );
-                      }
-                    } catch (e) {
-                      print("Error: $e");
-                      // This pops up a small message if login fails (e.g. wrong password)
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-                  child: Text(
-                    _isLogin ? "Sign In" : "Create Account",
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _isLogin = !_isLogin; // This flips the mode
-                    });
-                  },
-                  child: Text(
-                    _isLogin
-                        ? "Don't have an account? Sign Up"
-                        : "Already have an account? Login",
-                    style: GoogleFonts.poppins(
-                      color: Colors.black54,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -137,28 +215,41 @@ class _LoginScreenState extends State<LoginScreen> {
     String hint,
     TextEditingController controller,
     bool isPass,
+    IconData icon,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: controller,
-        obscureText: isPass,
-        decoration: InputDecoration(
-          hintText: hint,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 18,
-          ),
+    return TextField(
+      controller: controller,
+      obscureText: isPass && _obscurePassword,
+      style: GoogleFonts.poppins(fontSize: 14.5),
+      decoration: InputDecoration(
+        labelText: hint,
+        labelStyle: GoogleFonts.poppins(
+          color: Colors.grey.shade500,
+          fontSize: 14,
+        ),
+        prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 20),
+        suffixIcon: isPass
+            ? IconButton(
+                icon: Icon(
+                  _obscurePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: Colors.grey.shade500,
+                  size: 20,
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              )
+            : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        filled: true,
+        fillColor: const Color(0xFFF8F9FA),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
         ),
       ),
     );
@@ -169,17 +260,36 @@ class _LoginScreenState extends State<LoginScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Reset Password", style: GoogleFonts.poppins()),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          "Reset Password",
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: resetController,
-          decoration: const InputDecoration(hintText: "Enter your email"),
+          style: GoogleFonts.poppins(),
+          decoration: InputDecoration(
+            hintText: "Enter your email",
+            hintStyle: GoogleFonts.poppins(color: Colors.grey),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: Text(
+              "Cancel",
+              style: GoogleFonts.poppins(color: Colors.grey),
+            ),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
             onPressed: () async {
               await FirebaseAuth.instance.sendPasswordResetEmail(
                 email: resetController.text.trim(),
@@ -189,7 +299,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SnackBar(content: Text("Reset link sent to your email!")),
               );
             },
-            child: const Text("Send"),
+            child: Text(
+              "Send",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
           ),
         ],
       ),
