@@ -14,6 +14,7 @@ class AuthService {
     } catch (e) {
       print("Registration error: $e");
     }
+    return null;
   }
 // Sign In
   Future<User?> signIn(String email, String password) async {
