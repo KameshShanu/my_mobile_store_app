@@ -21,7 +21,6 @@ class _EquipmentScannerScreenState extends State<EquipmentScannerScreen> {
 
   Future<void> _openCamera() async {
     try {
-      // Added maxWidth, maxHeight, and imageQuality to compress under Firestore's 1MB limit
       final XFile? photo = await _picker.pickImage(
         source: ImageSource.camera,
         maxWidth: 800,
@@ -48,15 +47,13 @@ class _EquipmentScannerScreenState extends State<EquipmentScannerScreen> {
 
     try {
       final model = GenerativeModel(
-        model: 'gemini-3.8-flash', // Updated to current supported model
+        model: 'gemini-3.8-flash',
         apiKey: const String.fromEnvironment('GEMINI_API_KEY'),
         requestOptions: const RequestOptions(apiVersion: 'v1'),
       );
 
       final imageBytes = await image.readAsBytes();
-      final base64Image = base64Encode(
-        imageBytes,
-      ); // Encode image for Firestore
+      final base64Image = base64Encode(imageBytes);
 
       final content = [
         Content.multi([
@@ -82,10 +79,7 @@ class _EquipmentScannerScreenState extends State<EquipmentScannerScreen> {
         _isLoading = false;
       });
 
-      // Extract parsed equipment name dynamically
       final parsedEquipmentName = _parseField(text, "EQUIPMENT_NAME");
-
-      // Save analysis, dynamic name, and image to Firestore
       await _saveInspectionToFirebase(text, parsedEquipmentName, base64Image);
     } catch (e) {
       print("Gemini Error: $e");
@@ -93,6 +87,13 @@ class _EquipmentScannerScreenState extends State<EquipmentScannerScreen> {
         _aiResult = "Error: $e";
         _isLoading = false;
       });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Analysis failed: $e"),
+          backgroundColor: Colors.red.shade800,
+        ),
+      );
     }
   }
 
@@ -103,7 +104,6 @@ class _EquipmentScannerScreenState extends State<EquipmentScannerScreen> {
   ) async {
     final user = FirebaseAuth.instance.currentUser;
     final String inspectorId = user != null ? user.uid : 'local_inspector';
-    // Removed "if (user == null) return;" so local test writes succeed
 
     try {
       await FirebaseFirestore.instance.collection('inspections').add({
@@ -113,8 +113,7 @@ class _EquipmentScannerScreenState extends State<EquipmentScannerScreen> {
             ? equipmentName
             : 'Equipment Inspection',
         'analysis': analysisText,
-        'imageUrl':
-            base64Image, // Stores compressed image data for dashboard preview
+        'imageUrl': base64Image,
         'timestamp': FieldValue.serverTimestamp(),
       });
 
@@ -142,7 +141,6 @@ class _EquipmentScannerScreenState extends State<EquipmentScannerScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    // Added compression limits here as well for gallery uploads
     final XFile? selectedImage = await _picker.pickImage(
       source: source,
       maxWidth: 800,
@@ -157,16 +155,18 @@ class _EquipmentScannerScreenState extends State<EquipmentScannerScreen> {
     }
   }
 
+  // Flexible regex parser handling markdown formatting variations
   String _parseField(String text, String key) {
     try {
       final regExp = RegExp(
-        r'(?:\*\*|)?' + key + r'(?:\*\*|)?\s*[:\-]\s*(.*)',
+        r'^[#\-\*\s]*' + key + r'[\*\s]*[:\-]\s*(.*)',
         caseSensitive: false,
       );
       for (final line in text.split('\n')) {
-        final match = regExp.firstMatch(line);
+        final match = regExp.firstMatch(line.trim());
         if (match != null && match.group(1) != null) {
-          return match.group(1)!.replaceAll('*', '').trim();
+          final value = match.group(1)!.replaceAll('*', '').trim();
+          if (value.isNotEmpty) return value;
         }
       }
       return "Not specified";
@@ -339,109 +339,185 @@ class _EquipmentScannerScreenState extends State<EquipmentScannerScreen> {
                 ),
 
               if (!_isLoading && _aiResult.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey.shade200, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 15,
-                        offset: const Offset(0, 6),
+                // Fallback display if parsing fails or returns raw text/error
+                if (equipmentName == "Not specified" &&
+                    overallStatus == "Not specified")
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isPassed
-                              ? Colors.green.shade50
-                              : Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          isPassed
-                              ? Icons.verified_rounded
-                              : Icons.warning_amber_rounded,
-                          color: isPassed
-                              ? Colors.green.shade700
-                              : Colors.orange.shade800,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
                           children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.orange,
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
                             Text(
-                              equipmentName,
-                              style: const TextStyle(
+                              "Analysis Notice",
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black87,
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              equipmentType,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
                           ],
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isPassed
-                              ? Colors.green.shade100
-                              : Colors.orange.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          overallStatus,
-                          style: TextStyle(
-                            color: isPassed
-                                ? Colors.green.shade900
-                                : Colors.orange.shade900,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
+                        const SizedBox(height: 12),
+                        Text(
+                          _aiResult,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            color: Colors.black54,
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        if (_image != null)
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () =>
+                                  _identifyEquipmentWithAI(_image!),
+                              icon: const Icon(
+                                Icons.refresh,
+                                color: Colors.white,
+                              ),
+                              label: const Text(
+                                "Retry Analysis",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.black87,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
                       ),
-                    ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 15,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isPassed
+                                ? Colors.green.shade50
+                                : Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            isPassed
+                                ? Icons.verified_rounded
+                                : Icons.warning_amber_rounded,
+                            color: isPassed
+                                ? Colors.green.shade700
+                                : Colors.orange.shade800,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                equipmentName,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                equipmentType,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isPassed
+                                ? Colors.green.shade100
+                                : Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            overallStatus,
+                            style: TextStyle(
+                              color: isPassed
+                                  ? Colors.green.shade900
+                                  : Colors.orange.shade900,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                _buildInspectionDetailCard(
-                  "Rust & Corrosion Check",
-                  corrosionStatus,
-                  Icons.shield_outlined,
-                ),
-                const SizedBox(height: 12),
-                _buildInspectionDetailCard(
-                  "Electrical & Fraying Check",
-                  electricalStatus,
-                  Icons.bolt_rounded,
-                ),
-                const SizedBox(height: 12),
-                _buildInspectionDetailCard(
-                  "Inspector Recommendations",
-                  recommendations,
-                  Icons.assignment_outlined,
-                ),
+                  _buildInspectionDetailCard(
+                    "Rust & Corrosion Check",
+                    corrosionStatus,
+                    Icons.shield_outlined,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildInspectionDetailCard(
+                    "Electrical & Fraying Check",
+                    electricalStatus,
+                    Icons.bolt_rounded,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildInspectionDetailCard(
+                    "Inspector Recommendations",
+                    recommendations,
+                    Icons.assignment_outlined,
+                  ),
+                ],
               ],
             ],
           ),

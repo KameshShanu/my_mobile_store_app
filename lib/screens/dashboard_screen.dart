@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'equipment_scanner_screen.dart';
 import 'profile_screen.dart';
 import 'inspection_detail_screen.dart';
+import 'counterweight_calculator_screen.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 
@@ -180,6 +181,78 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
 
+              const SizedBox(height: 16),
+
+              // Counterweight Calculator Navigation Card
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CounterweightCalculatorScreen(),
+                  ),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 15,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.calculate_outlined,
+                          color: Colors.black87,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Counterweight Calculator",
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              "Compute swing stage outrigger weights (4:1 safety ratio)",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.grey,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 28),
 
               // Recent Activity Section Header
@@ -242,7 +315,7 @@ class DashboardScreen extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final doc = docs[index];
                       final data = doc.data() as Map<String, dynamic>;
-                      // 1. Get equipment name, fallback if empty
+
                       final String equipmentName =
                           (data['equipmentType'] as String?)
                                   ?.trim()
@@ -251,7 +324,6 @@ class DashboardScreen extends StatelessWidget {
                           ? data['equipmentType']
                           : 'Equipment Inspection';
 
-                      // 2. Format the Firestore Timestamp into a clean date and time string
                       final Timestamp? timestamp =
                           data['timestamp'] as Timestamp?;
                       final String formattedDate = timestamp != null
@@ -261,83 +333,151 @@ class DashboardScreen extends StatelessWidget {
                           : 'Recent Inspection';
                       final String? imageUrl = data['imageUrl'] as String?;
 
-                      return Material(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => InspectionDetailScreen(
-                                  documentId: doc.id,
-                                  data: data,
+                      // iOS-Style Swipe-to-Delete Dismissible Wrapper
+                      return Dismissible(
+                        key: Key(doc.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade700,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Icon(
+                                Icons.delete_outline_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                "Delete",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        onDismissed: (direction) async {
+                          try {
+                            // Delete document from Firestore
+                            await FirebaseFirestore.instance
+                                .collection('inspections')
+                                .doc(doc.id)
+                                .delete();
+
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("$equipmentName deleted"),
+                                backgroundColor: Colors.grey.shade900,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
                             );
-                          },
-                          child: Row(
-                            children: [
-                              // Thumbnail Image Preview
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: SizedBox(
-                                  width: 50,
-                                  height: 50,
-                                  child: imageUrl != null && imageUrl.isNotEmpty
-                                      ? Image.memory(
-                                          base64Decode(imageUrl),
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
-                                              Container(
-                                                color: Colors.blue.shade50,
-                                                child: const Icon(
-                                                  Icons.verified_outlined,
-                                                  color: Colors.blue,
-                                                  size: 22,
-                                                ),
+                          } catch (e) {
+                            debugPrint("Error deleting document: $e");
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Failed to delete: $e"),
+                                backgroundColor: Colors.red.shade800,
+                              ),
+                            );
+                          }
+                        },
+                        child: Material(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => InspectionDetailScreen(
+                                    documentId: doc.id,
+                                    data: data,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(10.0),
+                              child: Row(
+                                children: [
+                                  // Thumbnail Image Preview
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: SizedBox(
+                                      width: 50,
+                                      height: 50,
+                                      child:
+                                          imageUrl != null &&
+                                              imageUrl.isNotEmpty
+                                          ? Image.memory(
+                                              base64Decode(imageUrl),
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) =>
+                                                  Container(
+                                                    color: Colors.blue.shade50,
+                                                    child: const Icon(
+                                                      Icons.verified_outlined,
+                                                      color: Colors.blue,
+                                                      size: 22,
+                                                    ),
+                                                  ),
+                                            )
+                                          : Container(
+                                              color: Colors.blue.shade50,
+                                              child: const Icon(
+                                                Icons.verified_outlined,
+                                                color: Colors.blue,
+                                                size: 22,
                                               ),
-                                        )
-                                      : Container(
-                                          color: Colors.blue.shade50,
-                                          child: const Icon(
-                                            Icons.verified_outlined,
-                                            color: Colors.blue,
-                                            size: 22,
+                                            ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          equipmentName,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: Colors.black87,
                                           ),
                                         ),
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      equipmentName,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        color: Colors.black87,
-                                      ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          formattedDate,
+                                          style: const TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      formattedDate,
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                  const Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: Colors.grey,
+                                  ),
+                                ],
                               ),
-                              const Icon(
-                                Icons.chevron_right_rounded,
-                                color: Colors.grey,
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       );
